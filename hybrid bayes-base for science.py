@@ -579,5 +579,6 @@ print("Classification cost of all classes:", classification_cost * np.shape(X_te
 
 # save to csv
 file_name = 'results dependent feature selection'
-result.to_csv(file_name, sep='\t', encoding='utf-8')
+# TODO: make results file with 10 tries (10 seeds) and average the results
+#results.to_csv(file_name, sep='\t', encoding='utf-8')
 

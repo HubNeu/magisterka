@@ -896,5 +896,5 @@ print("F1 score:", metrics.f1_score(y_test, y_pred, average="weighted") * 100, "
 
 # save to csv
 file_name = 'results dependent feature selection'
-result.to_csv(file_name, sep='\t', encoding='utf-8')
+results.to_csv(file_name, sep='\t', encoding='utf-8')
 
