@@ -34,45 +34,73 @@ import numpy as np
 
 np.set_printoptions(suppress=True)
 import pandas as pd
-from platform import python_version
 import scipy
 import random
 import copy
 import warnings
+import multiprocessing
 
 warnings.filterwarnings("ignore")
 
-print("Libs imported. Python version is: ", python_version())
+# print("Libs imported. Python version is: ", python_version())
 
 # utility functions
 
 cols_mushroom = [
     "labels",
-    "cap_shape",
-    "cap_surface",
-    "cap_color",
+    "cap-shape",
+    "cap-surface",
+    "cap-color",
     "bruises",
     "odor",
-    "gill_attachment",
-    "gill_spacing",
-    "gill_size",
-    "gill_color",
-    "stalk_shape",
-    "stalk_root",
-    "stalk_surface_above_ring",
-    "stalk_surface_below_ring",
-    "stalk_color_above_ring",
-    "stalk_color_below_ring",
-    "veil_type",
-    "veil_color",
-    "ring_number",
-    "ring_type",
-    "spore_print_color",
+    "gill-attachment",
+    "gill-spacing",
+    "gill-size",
+    "gill-color",
+    "stalk-shape",
+    "stalk-root",
+    "stalk-surface-above-ring",
+    "stalk-surface-below-ring",
+    "stalk-color-above-ring",
+    "stalk-color-below-ring",
+    "veil-type",
+    "veil-color",
+    "ring-number",
+    "ring-type",
+    "spore-print-color",
     "population",
     "habitat",
 ]
+mushroom_cost = pd.DataFrame({
+    "labels": 728,
+    "cap-shape": 704,
+    "cap-surface": 36,
+    "cap-color": 624,
+    "bruises": 717,
+    "odor": 300,
+    "gill-attachment": 38,
+    "gill-spacing": 522,
+    "gill-size": 4,
+    "gill-color": 992,
+    "stalk-shape": 999,
+    "stalk-root": 14,
+    "stalk-surface-above-ring": 838,
+    "stalk-surface-below-ring": 726,
+    "stalk-color-above-ring": 846,
+    "stalk-color-below-ring": 190,
+    "veil-type": 633,
+    "veil-color": 176,
+    "ring-number": 211,
+    "ring-type": 186,
+    "spore-print-color": 610,
+    "population": 379,
+    "habitat": 734
+}, columns=cols_mushroom)
 
 cols_car = ["buying", "maintenance", "doors", "passengers", "boot", "safety", "labels"]
+car_cost = pd.DataFrame(
+    {"buying": 250, "maintenance": 923, "doors": 200, "passengers": 733, "boot": 299, "safety": 808, "labels": 474
+     }, columns=cols_car)
 
 cols_audiology = [
     "age_gt_60",
@@ -144,9 +172,83 @@ cols_audiology = [
     "viith_nerve_signs",
     "wave_V_delayed",
     "waveform_ItoV_prolonged",
-    "p_index",
+    "p-index",
     "labels",
 ]
+
+audiology_cost = pd.DataFrame({
+    "age_gt_60": 119,
+    "air": 399,
+    "airBoneGap": 731,
+    "ar_c": 323,
+    "ar_u": 977,
+    "bone": 796,
+    "boneAbnormal": 107,
+    "bser": 852,
+    "history_buzzing": 326,
+    "history_dizziness": 847,
+    "history_fluctuating": 517,
+    "history_fullness": 654,
+    "history_heredity": 228,
+    "history_nausea": 367,
+    "history_noise": 973,
+    "history_recruitment": 175,
+    "history_ringing": 253,
+    "history_roaring": 294,
+    "history_vomiting": 851,
+    "late_wave_poor": 901,
+    "m_at_2k": 167,
+    "m_cond_lt_1k": 840,
+    "m_gt_1k": 97,
+    "m_m_gt_2k": 352,
+    "m_m_sn": 836,
+    "m_m_sn_gt_1k": 201,
+    "m_m_sn_gt_2k": 948,
+    "m_m_sn_gt_500": 418,
+    "m_p_sn_gt_2k": 137,
+    "m_s_gt_500": 804,
+    "m_s_sn": 173,
+    "m_s_sn_gt_1k": 980,
+    "m_s_sn_gt_2k": 871,
+    "m_s_sn_gt_3k": 393,
+    "m_s_sn_gt_4k": 446,
+    "m_sn_2_3k": 292,
+    "m_sn_gt_1k": 579,
+    "m_sn_gt_2k": 987,
+    "m_sn_gt_3k": 820,
+    "m_sn_gt_4k": 465,
+    "m_sn_gt_500": 951,
+    "m_sn_gt_6k": 736,
+    "m_sn_lt_1k": 180,
+    "m_sn_lt_2k": 529,
+    "m_sn_lt_3k": 543,
+    "middle_wave_poor": 896,
+    "mod_gt_4k": 755,
+    "mod_mixed": 811,
+    "vmod_s_mixed": 956,
+    "mod_s_sn_gt_500": 542,
+    "mod_sn": 835,
+    "mod_sn_gt_1k": 814,
+    "mod_sn_gt_2k": 207,
+    "mod_sn_gt_3k": 166,
+    "mod_sn_gt_4k": 732,
+    "mod_sn_gt_500": 204,
+    "notch_4k": 80,
+    "notch_at_4k": 698,
+    "o_ar_c": 823,
+    "o_ar_u": 147,
+    "s_sn_gt_1k": 577,
+    "s_sn_gt_2k": 493,
+    "s_sn_gt_4k": 993,
+    "speech": 585,
+    "static_normal": 654,
+    "tymp": 677,
+    "viith_nerve_signs": 657,
+    "wave_V_delayed": 585,
+    "waveform_ItoV_prolonged": 793,
+    "p-index": 659,
+    "labels": 200
+}, columns=cols_audiology)
 
 """
 https://archive.ics.uci.edu/ml/datasets/car+evaluation
@@ -214,9 +316,10 @@ def load_audiology():
     df_audiology.insert(0, "labels", labels_col)
     return df_audiology
 
+
 # Choose dataset
-# dataset = load_car()
-dataset = load_mushroom()
+dataset = load_car()
+# dataset = load_mushroom()
 # dataset = load_audiology()
 
 print(dataset.info())
@@ -420,15 +523,16 @@ order_of_ordinal_categories = pd.DataFrame.from_dict(
 print("Order created.")
 print(order_of_ordinal_categories)
 
+
 # Create custom encoding categorical bayes classifier
 class EncodingCategoricalBayes:
     def __init__(
-        self,
-        # classifier,
-        ordinal_categories_order,
-        ordinal_columns,
-        one_hot_columns,
-        dataset,
+            self,
+            # classifier,
+            ordinal_categories_order,
+            ordinal_columns,
+            one_hot_columns,
+            dataset,
     ):
         # self.classifier = classifier
         self.ordinal_categories_order = ordinal_categories_order
@@ -520,6 +624,7 @@ class EncodingCategoricalBayes:
 
 print("Class EncodingCategoricalBayes has been created")
 
+
 # Sequential Forward Feature Selector
 class SequentialForwardFeatureSelector:
     def __init__(self, classification_costs, CV_folds, uncertainty_threshold):
@@ -528,16 +633,16 @@ class SequentialForwardFeatureSelector:
         self.uncertainty_threshold = uncertainty_threshold
 
     def sequential_predict(
-        self,
-        X_train_original,
-        y_train_original,
-        X_test_original,
-        y_test_original,
-        ordinal_categoires_order,
-        cols_ordinal,
-        cols_one_hot,
-        whole_dataset,
-        data_duplication_flag,
+            self,
+            X_train_original,
+            y_train_original,
+            X_test_original,
+            y_test_original,
+            ordinal_categoires_order,
+            cols_ordinal,
+            cols_one_hot,
+            whole_dataset,
+            data_duplication_flag,
     ):
         # Make copies as we'll be altering these datasets
         X_tr = copy.deepcopy(X_train_original)
@@ -683,7 +788,7 @@ class SequentialForwardFeatureSelector:
 
                 # remove already classified classes
                 condition = highest_probas["highest_proba"] > (
-                    1 - self.uncertainty_threshold
+                        1 - self.uncertainty_threshold
                 )
 
                 batch_result_dataframe = pd.concat(
@@ -739,7 +844,7 @@ class SequentialForwardFeatureSelector:
         return outcomes_fn, highest_probas_fn, to_duplicate_next
 
     def prepare_train_dataset(
-        self, X_train_arg, y_train_arg, duplicates_per_case, flag
+            self, X_train_arg, y_train_arg, duplicates_per_case, flag
     ):
         if duplicates_per_case.empty or not flag:
             # nothing to dupe or flag is down (skip)
@@ -772,17 +877,17 @@ class SequentialForwardFeatureSelector:
         )
 
     def find_next_best_feature(
-        self,
-        X_tra,
-        y_tra,
-        X_train_add,
-        y_train_add,
-        unused_feat,
-        current_feat,
-        whole_dataset,
-        ordinal_categoires_order,
-        cols_ordinal,
-        cols_one_hot,
+            self,
+            X_tra,
+            y_tra,
+            X_train_add,
+            y_train_add,
+            unused_feat,
+            current_feat,
+            whole_dataset,
+            ordinal_categoires_order,
+            cols_ordinal,
+            cols_one_hot,
     ):
         X_tr = copy.deepcopy(X_tra)
         y_tr = copy.deepcopy(y_tra)
@@ -844,7 +949,7 @@ class SequentialForwardFeatureSelector:
         return accuracy_per_new_feature
 
     def make_encoding_categorical_bayes(
-        self, ordinal_categoires_order, cols_ordinal, cols_one_hot, whole_dataset
+            self, ordinal_categoires_order, cols_ordinal, cols_one_hot, whole_dataset
     ):
         return EncodingCategoricalBayes(
             # classifier=CategoricalNB(),
@@ -888,13 +993,11 @@ y_test.sort_index(inplace=True)
 print("Accuracy:", metrics.accuracy_score(y_test, y_pred) * 100, "%")
 print("F1 score:", metrics.f1_score(y_test, y_pred, average="weighted") * 100, "%")
 
-
 # Deduct some useful metrics:
 # mean cost
 # median cost
 # difference in accuracy
 
 # save to csv
-file_name = 'results dependent feature selection'
+file_name = 'results dependent feature selection'  # + proces.ppid
 results.to_csv(file_name, sep='\t', encoding='utf-8')
-

@@ -33,7 +33,6 @@ from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import CategoricalNB, MultinomialNB, GaussianNB
 from sklearn import metrics
 from sklearn.compose import make_column_transformer
-from sklearn.model_selection import KFold
 
 import numpy as np
 
@@ -46,7 +45,6 @@ import scipy
 import random
 
 print("Libs imported. Python version is: ", python_version())
-
 
 # utility functions
 
@@ -75,8 +73,36 @@ cols_mushroom = [
     "population",
     "habitat",
 ]
+mushroom_cost = pd.DataFrame({
+    "labels": 728,
+    "cap-shape": 704,
+    "cap-surface": 36,
+    "cap-color": 624,
+    "bruises": 717,
+    "odor": 300,
+    "gill-attachment": 38,
+    "gill-spacing": 522,
+    "gill-size": 4,
+    "gill-color": 992,
+    "stalk-shape": 999,
+    "stalk-root": 14,
+    "stalk-surface-above-ring": 838,
+    "stalk-surface-below-ring": 726,
+    "stalk-color-above-ring": 846,
+    "stalk-color-below-ring": 190,
+    "veil-type": 633,
+    "veil-color": 176,
+    "ring-number": 211,
+    "ring-type": 186,
+    "spore-print-color": 610,
+    "population": 379,
+    "habitat": 734
+}, columns=cols_mushroom)
 
 cols_car = ["buying", "maintenance", "doors", "passengers", "boot", "safety", "labels"]
+car_cost = pd.DataFrame(
+    {"buying": 250, "maintenance": 923, "doors": 200, "passengers": 733, "boot": 299, "safety": 808, "labels": 474
+     }, columns=cols_car)
 
 cols_audiology = [
     "age_gt_60",
@@ -152,22 +178,79 @@ cols_audiology = [
     "labels",
 ]
 
-cols_wine = [
-    "labels",
-    "alcohol",
-    "mallic-acid",
-    "alcalinity",
-    "ash",
-    "magnesium",
-    "total-phenols",
-    "flavonids",
-    "nonflavonid-phenols",
-    "proanthocyanins",
-    "color-intensity",
-    "hue",
-    "od-of-diluted-wines",
-    "proline",
-]
+audiology_cost = pd.DataFrame({
+    "age_gt_60": 119,
+    "air": 399,
+    "airBoneGap": 731,
+    "ar_c": 323,
+    "ar_u": 977,
+    "bone": 796,
+    "boneAbnormal": 107,
+    "bser": 852,
+    "history_buzzing": 326,
+    "history_dizziness": 847,
+    "history_fluctuating": 517,
+    "history_fullness": 654,
+    "history_heredity": 228,
+    "history_nausea": 367,
+    "history_noise": 973,
+    "history_recruitment": 175,
+    "history_ringing": 253,
+    "history_roaring": 294,
+    "history_vomiting": 851,
+    "late_wave_poor": 901,
+    "m_at_2k": 167,
+    "m_cond_lt_1k": 840,
+    "m_gt_1k": 97,
+    "m_m_gt_2k": 352,
+    "m_m_sn": 836,
+    "m_m_sn_gt_1k": 201,
+    "m_m_sn_gt_2k": 948,
+    "m_m_sn_gt_500": 418,
+    "m_p_sn_gt_2k": 137,
+    "m_s_gt_500": 804,
+    "m_s_sn": 173,
+    "m_s_sn_gt_1k": 980,
+    "m_s_sn_gt_2k": 871,
+    "m_s_sn_gt_3k": 393,
+    "m_s_sn_gt_4k": 446,
+    "m_sn_2_3k": 292,
+    "m_sn_gt_1k": 579,
+    "m_sn_gt_2k": 987,
+    "m_sn_gt_3k": 820,
+    "m_sn_gt_4k": 465,
+    "m_sn_gt_500": 951,
+    "m_sn_gt_6k": 736,
+    "m_sn_lt_1k": 180,
+    "m_sn_lt_2k": 529,
+    "m_sn_lt_3k": 543,
+    "middle_wave_poor": 896,
+    "mod_gt_4k": 755,
+    "mod_mixed": 811,
+    "vmod_s_mixed": 956,
+    "mod_s_sn_gt_500": 542,
+    "mod_sn": 835,
+    "mod_sn_gt_1k": 814,
+    "mod_sn_gt_2k": 207,
+    "mod_sn_gt_3k": 166,
+    "mod_sn_gt_4k": 732,
+    "mod_sn_gt_500": 204,
+    "notch_4k": 80,
+    "notch_at_4k": 698,
+    "o_ar_c": 823,
+    "o_ar_u": 147,
+    "s_sn_gt_1k": 577,
+    "s_sn_gt_2k": 493,
+    "s_sn_gt_4k": 993,
+    "speech": 585,
+    "static_normal": 654,
+    "tymp": 677,
+    "viith_nerve_signs": 657,
+    "wave_V_delayed": 585,
+    "waveform_ItoV_prolonged": 793,
+    "p-index": 659,
+    "labels": 200
+}, columns=cols_audiology)
 
 """
 https://archive.ics.uci.edu/ml/datasets/car+evaluation
@@ -243,23 +326,16 @@ https://www.alldatascience.com/classification/wine-dataset-analysis-with-python/
 0 -> labels
 """
 
+# Choose dataset and cost
+dataset = load_car()
+dataset_costs = car_cost
 
-def load_wine():
-    df_wine = pd.read_csv(
-        "https://archive.ics.uci.edu/ml/machine-learning-databases/wine/wine.data",
-        header=None,
-        names=cols_wine,
-    )
-    # index mappings
-    # length = len(df_wine.columns)
-    # X = df_wine.loc[:, 1:].values
-    # y = df_wine.loc[:, 0].values
-    return df_wine
+# dataset = load_mushroom()
+# dataset_costs = mushroom_cost
 
-# Choose dataset
-# dataset = load_car()
-dataset = load_mushroom()
 # dataset = load_audiology()
+# dataset_costs = audiology_cost
+
 ### dataset = load_wine() # all cols numerical, doesn't work
 
 print(dataset.info())
@@ -273,22 +349,11 @@ y_cat = dataset.loc[:, "labels"]
 print("Size of X: ", np.shape(X_cat))
 print("Size of y: ", np.shape(y_cat))
 
-# Generate a matrix of costs
-max_cost_allowed = 10000
-
-dataset_costs = pd.DataFrame(
-    np.random.randint(0, max_cost_allowed, size=(1, np.shape(X_cat)[1])),
-    columns=X_cat.columns,
-)
-
-print("Size of dataset costs: ", np.shape(dataset_costs))
-print("Cost of classification on full dataset: ", dataset_costs.sum(axis=1)[0])
-
 max_seed_val = 2 ** 32 - 1
 
 # Split dataset into training set and test set
 X_train, X_test, y_train, y_test = train_test_split(
-    X_cat, y_cat, test_size=0.2, random_state=random.randrange(0, max_seed_val),
+    X_cat, y_cat, test_size=0.1, random_state=random.randrange(0, max_seed_val),
 )
 print("Data has been split.")
 # print("X contains features: ", X_train.columns == "index")
@@ -461,15 +526,16 @@ order_of_ordinal_categories = pd.DataFrame.from_dict(
 print("Order created.")
 print(order_of_ordinal_categories)
 
+
 # Create custom encoding categorical bayes classifier
 class EncodingCategoricalBayes:
     def __init__(
-        self,
-        classifier,
-        ordinal_categories_order,
-        ordinal_columns,
-        one_hot_columns,
-        dataset,
+            self,
+            classifier,
+            ordinal_categories_order,
+            ordinal_columns,
+            one_hot_columns,
+            dataset,
     ):
         self.classifier = classifier
         self.ordinal_categories_order = ordinal_categories_order
@@ -579,6 +645,5 @@ print("Classification cost of all classes:", classification_cost * np.shape(X_te
 
 # save to csv
 file_name = 'results dependent feature selection'
-# TODO: make results file with 10 tries (10 seeds) and average the results
-#results.to_csv(file_name, sep='\t', encoding='utf-8')
-
+results = pd.DataFrame()
+results.to_csv(file_name, sep='\t', encoding='utf-8')
