@@ -1,29 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-"""
-Solved:
-    -It's possible for train-test split to split data in such a way, that
-   after encoding, X_train and X_test have different numbers of features.
-   Split has to be rerun to fix it. First encode, then split again?
-   BUT IT STILL HAS TO BE ENCODED AND SPLIT BEFORE STARTING CROSS VALIDATION
-   AND SEQUENTIAL FEATURE SELECTION. MAYBE APPEND DURING SPLIT AND THEN SPLIT
-   AGAIN?
-    -Improve feature encoding to have proper ordering instead of random numbers
-    which currently influence classification accuracy:
-    https://datascience.stackexchange.com/questions/72343/encoding-with-ordinalencoder-how-to-give-levels-as-user-input
-
-Fishy:
-    -check and check for data leakage (def: https://scikit-learn.org/stable/glossary.html)
-
-TODO:
-    -add cost counting to SFS wrapper
-    -???
-    -tests and profit???
-    -report a bug with indexes when predicting X_test using audiology and 
-"""
-
-## SKLEARN
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import CategoricalNB, MultinomialNB, GaussianNB
@@ -38,7 +15,8 @@ import scipy
 import random
 import copy
 import warnings
-import multiprocessing
+from multiprocessing import Process
+import queue
 
 warnings.filterwarnings("ignore")
 
@@ -95,12 +73,18 @@ mushroom_cost = pd.DataFrame({
     "spore-print-color": 610,
     "population": 379,
     "habitat": 734
-}, columns=cols_mushroom)
+},
+    columns=cols_mushroom,
+    index=[0]
+)
 
 cols_car = ["buying", "maintenance", "doors", "passengers", "boot", "safety", "labels"]
 car_cost = pd.DataFrame(
     {"buying": 250, "maintenance": 923, "doors": 200, "passengers": 733, "boot": 299, "safety": 808, "labels": 474
-     }, columns=cols_car)
+     },
+    columns=cols_car,
+    index=[0]
+)
 
 cols_audiology = [
     "age_gt_60",
@@ -248,7 +232,17 @@ audiology_cost = pd.DataFrame({
     "waveform_ItoV_prolonged": 793,
     "p-index": 659,
     "labels": 200
-}, columns=cols_audiology)
+},
+    columns=cols_audiology,
+    index=[0]
+)
+
+"""
+print("Cols audiology:",audiology_cost.isnull().values.any())
+print("Cols car", car_cost.isnull().values.any())
+print("cols_mushroom:", mushroom_cost.isnull().values.any())
+print("")
+"""
 
 """
 https://archive.ics.uci.edu/ml/datasets/car+evaluation
@@ -319,10 +313,15 @@ def load_audiology():
 
 # Choose dataset
 dataset = load_car()
-# dataset = load_mushroom()
-# dataset = load_audiology()
+dataset_costs = car_cost
 
-print(dataset.info())
+# dataset = load_mushroom()
+# dataset_costs = mushroom_cost
+
+# dataset = load_audiology()
+# dataset_costs = audiology_cost
+
+# print(dataset.info())
 # print("First five records:")
 # print(dataset.head())
 
@@ -330,19 +329,11 @@ print(dataset.info())
 X_cat = dataset.loc[:, dataset.columns != "labels"]
 y_cat = dataset.loc[:, "labels"]
 
-print("Size of X: ", np.shape(X_cat))
-print("Size of y: ", np.shape(y_cat))
+# print("Size of X: ", np.shape(X_cat))
+# print("Size of y: ", np.shape(y_cat))
 
-# Generate a matrix of costs
-max_cost_allowed = 10000
-
-dataset_costs = pd.DataFrame(
-    np.random.randint(0, max_cost_allowed, size=(1, np.shape(X_cat)[1])),
-    columns=X_cat.columns,
-)
-
-print("Size of dataset costs: ", np.shape(dataset_costs))
-print("Cost of classification on full dataset: ", dataset_costs.sum(axis=1)[0])
+# print("Size of dataset costs: ", np.shape(dataset_costs))
+# print("Cost of classification on full dataset: ", dataset_costs.sum(axis=1)[0])
 
 max_seed_val = 2 ** 32 - 1
 
@@ -350,14 +341,14 @@ max_seed_val = 2 ** 32 - 1
 X_train, X_test, y_train, y_test = train_test_split(
     X_cat, y_cat, test_size=0.2, random_state=random.randrange(0, max_seed_val),
 )
-print("Data has been split.")
+# print("Data has been split.")
 # print("X contains features: ", X_train.columns == "index")
 
 # Transform y using label encoder
 le = LabelEncoder().fit(y_cat)
 encoded_y_train = le.transform(y_train)
 encoded_y_test = le.transform(y_test)
-print("Labels encoded: ", np.shape(encoded_y_train), ", ", np.shape(encoded_y_test))
+# print("Labels encoded: ", np.shape(encoded_y_train), ", ", np.shape(encoded_y_test))
 
 # Collectors of values
 
@@ -464,7 +455,7 @@ cols_ordinal = [
     "tymp",
 ]
 
-print("Cols created.")
+# print("Cols created.")
 
 # Make order of categories per each column in ordinal_columns
 order_of_ordinal_categories = pd.DataFrame.from_dict(
@@ -520,8 +511,9 @@ order_of_ordinal_categories = pd.DataFrame.from_dict(
     }
 )
 
-print("Order created.")
-print(order_of_ordinal_categories)
+
+# print("Order created.")
+# print(order_of_ordinal_categories)
 
 
 # Create custom encoding categorical bayes classifier
@@ -622,7 +614,7 @@ class EncodingCategoricalBayes:
         return self.classifier.get_params()
 
 
-print("Class EncodingCategoricalBayes has been created")
+# print("Class EncodingCategoricalBayes has been created")
 
 
 # Sequential Forward Feature Selector
@@ -658,13 +650,14 @@ class SequentialForwardFeatureSelector:
             "feature_used_to_classify",
         ]
 
+        final_result_dataframe = pd.DataFrame(columns=final_result_columns)
+
         total_number_of_cases = np.shape(X_tst)[0]
         classified_size = -1
 
         for index, row_entry in X_tst.iterrows():
             unclassified_flag = True
             duplicates = pd.DataFrame()
-            final_result_dataframe = pd.DataFrame(columns=final_result_columns)
             unused_features = X_tst.columns.tolist()
             current_features = []
 
@@ -672,6 +665,7 @@ class SequentialForwardFeatureSelector:
             loop_number = 0
             classified_size += 1
 
+            """
             print("")
             print(
                 "Classified classes: ",
@@ -686,6 +680,7 @@ class SequentialForwardFeatureSelector:
             print("")
             print("=========================================")
             print("New row entry number:", index)
+            """
 
             # starting feature
             accuracy_per_new_feature = self.find_next_best_feature(
@@ -705,8 +700,8 @@ class SequentialForwardFeatureSelector:
             # Main loop, until all test classes are classified
             while unclassified_flag:
                 # make a list of features with their predicted accuracy
-                print("")
-                print("Start of loop number: ", loop_number)
+                #print("")
+                #print("Start of loop number: ", loop_number)
                 loop_number += 1
 
                 if latch_flag:
@@ -734,8 +729,8 @@ class SequentialForwardFeatureSelector:
                 unused_features.remove(best_next_feature)
                 current_features.append(best_next_feature)
 
-                print("Picked feature: ", best_next_feature)
-                print("Current feature set: ", current_features)
+                # print("Picked feature: ", best_next_feature)
+                # print("Current feature set: ", current_features)
 
                 # 1.We have chosen the best feature, duplicate data and we classify the test using the feature and checking the probablilities
 
@@ -810,10 +805,8 @@ class SequentialForwardFeatureSelector:
                     )
 
                 # now go back to the beginning of the loop and check for unclassified classes
-            print(
-                "Out of the loop. Usable features ran out, or no more cases to classify."
-            )
-        print("All cases classified.")
+            # print("Out of the loop. Usable features ran out, or no more cases to classify.")
+        # print("All cases classified.")
         return final_result_dataframe
 
     def predict_proba_wrapper(self, classifier, X_train, y_train, X_test):
@@ -827,7 +820,7 @@ class SequentialForwardFeatureSelector:
 
         # gotta make it in 2 steps bc of no column name tracking in numpy
         new_outcome_df = pd.DataFrame(
-            classifier.predict(df_row_entry),
+            classifier.predict(df_row_entry).astype(int),
             columns=["outcome"],
             index=df_row_entry.index,
         )
@@ -965,39 +958,61 @@ class SequentialForwardFeatureSelector:
         ].sum(axis=1)[0]
 
 
-print("Sequential Forward Feature Selector is created.")
+# print("Sequential Forward Feature Selector is created.")
 
 # Create a Bayes Classifier || requires min_categories due to a bug with indexes, reporting the bug added to TODO
 
-selector = SequentialForwardFeatureSelector(dataset_costs, 10, 0.15)
+def doClassification(iteration_id):
+    selector = SequentialForwardFeatureSelector(dataset_costs, 10, 0.15)
 
-# Train the model using the training sets
-results = selector.sequential_predict(
-    X_train,
-    encoded_y_train,
-    X_test,
-    encoded_y_test,
-    order_of_ordinal_categories,  # order of ordinal categories
-    cols_ordinal,  # list of ordinal columns in whole data
-    cols_one_hot,  # list of one hot columns in whole data
-    X_cat,  # encoder dataset
-    True,  # feature duplication when classifying
-)
+    y_test_pd = pd.DataFrame(encoded_y_test, columns=["index"], index=X_test.index).sort_index(inplace=False)
 
-print("Done")
-# print(results)
+    # Train the model using the training sets
+    results = selector.sequential_predict(
+        X_train,
+        encoded_y_train,
+        X_test,
+        encoded_y_test,
+        order_of_ordinal_categories,  # order of ordinal categories
+        cols_ordinal,  # list of ordinal columns in whole data
+        cols_one_hot,  # list of one hot columns in whole data
+        X_cat,  # encoder dataset
+        True,  # feature duplication when classifying
+    )
 
-# warning: not sorted!
-y_pred = results["outcome"].sort_index()
-y_test.sort_index(inplace=True)
-print("Accuracy:", metrics.accuracy_score(y_test, y_pred) * 100, "%")
-print("F1 score:", metrics.f1_score(y_test, y_pred, average="weighted") * 100, "%")
+    """
+    # print("Done")
+    # print(results)
 
-# Deduct some useful metrics:
-# mean cost
-# median cost
-# difference in accuracy
+    # warning: not sorted!
+    y_pred = results["outcome"].sort_index()
+    y_test.sort_index(inplace=True)
+    print("Accuracy:", metrics.accuracy_score(y_test, y_pred) * 100, "%")
+    print("F1 score:", metrics.f1_score(y_test, y_pred, average="weighted") * 100, "%")
 
-# save to csv
-file_name = 'results dependent feature selection'  # + proces.ppid
-results.to_csv(file_name, sep='\t', encoding='utf-8')
+    # Deduct some useful metrics:
+    # mean cost
+    # median cost
+    # difference in accuracy
+    """
+
+    # save to csv
+    file_name = 'results_dependent_feature_selection_' + str(iteration_id) + '.csv'
+    results.to_csv(file_name, sep='\t', encoding='utf-8', mode='a', header=True, index=False)
+
+    print("===============================================")
+    print("IterationId:", iteration_id)
+    y_pred = results["outcome"].sort_index()
+    print(y_test_pd.values)
+    print(y_pred.values)
+    #this doesnt work
+    print("Accuracy:", metrics.accuracy_score(y_test_pd, y_pred) * 100, "%")
+    print("F1 score:", metrics.f1_score(y_test_pd, y_pred, average="weighted") * 100, "%")
+
+
+if __name__ == '__main__':
+    #number_of_processes = 10
+    number_of_processes = 1
+    for proc in range(number_of_processes):
+        p = Process(target=doClassification, args=(proc,))
+        p.start()
