@@ -1,37 +1,14 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-"""
-Solved:
-    -It's possible for train-test split to split data in such a way, that
-   after encoding, X_train and X_test have different numbers of features.
-   Split has to be rerun to fix it. First encode, then split again?
-   BUT IT STILL HAS TO BE ENCODED AND SPLIT BEFORE STARTING CROSS VALIDATION
-   AND SEQUENTIAL FEATURE SELECTION. MAYBE APPEND DURING SPLIT AND THEN SPLIT
-   AGAIN?
-    -Improve feature encoding to have proper ordering instead of random numbers
-    which currently influence classification accuracy:
-    https://datascience.stackexchange.com/questions/72343/encoding-with-ordinalencoder-how-to-give-levels-as-user-input
-
-Fishy:
-    -check and check for data leakage (def: https://scikit-learn.org/stable/glossary.html)
-
-TODO:
-    -add cost counting to SFS wrapper
-    -???
-    -tests and profit???
-    -report a bug with indexes when predicting X_test using audiology and
-"""
-
 ## SKLEARN
 from multiprocessing import Process
 
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, LabelEncoder
-from sklearn.model_selection import train_test_split
-from sklearn.naive_bayes import CategoricalNB, MultinomialNB, GaussianNB
+from sklearn.model_selection import StratifiedKFold
+from sklearn.naive_bayes import CategoricalNB
 from sklearn import metrics
 from sklearn.compose import make_column_transformer
-from sklearn.model_selection import KFold
 import numpy as np
 
 np.set_printoptions(suppress=True)
@@ -347,27 +324,11 @@ y_cat = dataset.loc[:, "labels"]
 # print("Size of y: ", np.shape(y_cat))
 
 # Generate a matrix of costs
-max_cost_allowed = 10000
 
 # dataset_costs = pd.DataFrame(np.random.randint(0, max_cost_allowed, size=(1, np.shape(X_cat)[1])),columns=X_cat.columns,)
 
 # print("Size of dataset costs: ", np.shape(dataset_costs))
 # print("Cost of classification on full dataset: ", dataset_costs.sum(axis=1)[0])
-
-max_seed_val = 2 ** 32 - 1
-
-# Split dataset into training set and test set
-X_train, X_test, y_train, y_test = train_test_split(
-    X_cat, y_cat, test_size=0.2, random_state=random.randrange(0, max_seed_val),
-)
-# print("Data has been split.")
-# print("X contains features: ", X_train.columns == "index")
-
-# Transform y using label encoder
-le = LabelEncoder().fit(y_cat)
-encoded_y_train = le.transform(y_train)
-encoded_y_test = le.transform(y_test)
-# print("Labels encoded: ", np.shape(encoded_y_train), ", ", np.shape(encoded_y_test))
 
 # Collectors of values
 
@@ -654,6 +615,7 @@ class SequentialForwardFeatureSelector:
             cols_one_hot,
             whole_dataset,
             data_duplication_flag,
+            results_dataframe
     ):
         # Make copies as we'll be altering these datasets
         X_tr = copy.deepcopy(X_train_original)
@@ -665,8 +627,7 @@ class SequentialForwardFeatureSelector:
         final_result_columns = [
             "highest_proba",
             "outcome",
-            "cost_of_classification",
-            "feature_used_to_classify",
+            "cost_of_classification"
         ]
         duplicates = pd.DataFrame()
         final_result_dataframe = pd.DataFrame(columns=final_result_columns)
@@ -806,7 +767,8 @@ class SequentialForwardFeatureSelector:
             # now go back to the beginning of the loop and check for unclassified classes
 
         # print("Out of the loop. Usable features ran out, or no more cases to classify.")
-        return final_result_dataframe
+        results_dataframe = pd.concat([results_dataframe, final_result_dataframe], axis=0)
+        return results_dataframe
 
     def predict_proba_wrapper(
             self, classifier, X_train, y_train, X_test, duplicates, flag, unknown_feature
@@ -883,8 +845,8 @@ class SequentialForwardFeatureSelector:
 
     def find_next_best_feature(
             self,
-            X_tr,
-            y_tr,
+            X_tra,
+            y_tra,
             X_test,
             y_test,
             unused_feat,
@@ -894,7 +856,9 @@ class SequentialForwardFeatureSelector:
             cols_ordinal,
             cols_one_hot,
     ):
-        kf = KFold(n_splits=self.CV_folds)
+        X_tr = copy.deepcopy(X_tra)
+        y_tr = copy.deepcopy(y_tra)
+        kf = StratifiedKFold(n_splits=self.CV_folds)
         accuracy_per_new_feature = pd.DataFrame(
             0, index=np.arange(1), columns=unused_feat,
         )
@@ -905,7 +869,7 @@ class SequentialForwardFeatureSelector:
             feature_set_to_try.append(new_feature)
             dataset_for_encoder = pd.DataFrame(whole_dataset[feature_set_to_try])
 
-            for train_index, test_index in kf.split(X_tr):
+            for train_index, test_index in kf.split(X_tr, y_tr):
                 # create _train, _cv_test, _test splits
                 # no need to reshuffle it, it's already in random order
                 # X is a dataframe
@@ -968,8 +932,10 @@ class SequentialForwardFeatureSelector:
 
 # Create a Bayes Classifier || requires min_categories due to a bug with indexes, reporting the bug added to TODO
 
-def doClassification(iteration_id):
-    selector = SequentialForwardFeatureSelector(dataset_costs, 10, 0.15)
+def doClassification(iteration_id, results_dataframe, number_of_folds, threshold, X_train, encoded_y_train, X_test, encoded_y_test):
+    selector = SequentialForwardFeatureSelector(dataset_costs, number_of_folds, threshold)
+
+    y_test_pd = pd.DataFrame(encoded_y_test, columns=["index"], index=X_test.index).sort_index(inplace=False)
 
     # Train the model using the training sets
     results = selector.sequential_predict(
@@ -982,31 +948,65 @@ def doClassification(iteration_id):
         cols_one_hot,  # list of one hot columns in whole data
         X_cat,  # encoder dataset
         True,  # feature duplication when classifying
+        results_dataframe
     )
-
-    """
-    #print("Done")
-    # print(results)
-    
-    # warning: not sorted!
-    y_pred = results["outcome"].sort_index()
-    y_test.sort_index(inplace=True)
-    print("Accuracy:", metrics.accuracy_score(y_test, y_pred) * 100, "%")
-    print("F1 score:", metrics.f1_score(y_test, y_pred, average="weighted") * 100, "%")
-    
-    # Deduct some useful metrics:
-    # mean cost
-    # median cost
-    # difference in accuracy
-    """
-
-    # save to csv
-    file_name = 'results_independent_feature_selection_' + str(iteration_id) + '.csv'
-    results.to_csv(file_name, sep='\t', encoding='utf-8')
 
 
 if __name__ == '__main__':
+    groupped_results = pd.DataFrame()
     number_of_processes = 10
-    for proc in range(number_of_processes):
-        p = Process(target=doClassification, args=(proc,))
+    processes = []
+
+    max_seed_val = 2 ** 32 - 1
+    random_seed_kfold = random.randrange(0, max_seed_val)
+    number_of_folds = 10
+    threshold = 0.15
+
+    skf = StratifiedKFold(n_splits=number_of_folds, random_state=random_seed_kfold, shuffle=True)
+    proc = 0
+    # Split dataset into training set and test set
+    for train_idx, test_idx in skf.split(X_cat, y_cat):
+        X_train, X_test = (
+            X_cat.iloc[train_idx],
+            X_cat.iloc[test_idx],
+        )
+
+        # y
+        y_train, y_test = (
+            y_cat[train_idx],
+            y_cat[test_idx],
+        )
+        # print("Data has been split.")
+        # print("X contains features: ", X_train.columns == "index")
+
+        # Transform y using label encoder
+        le = LabelEncoder().fit(y_cat)
+        encoded_y_train = le.transform(y_train)
+        encoded_y_test = le.transform(y_test)
+
+        next_proc = copy.deepcopy(proc)
+        proc += 1
+        p = Process(target=doClassification,
+                    args=(next_proc, groupped_results, number_of_folds, threshold, X_train, encoded_y_train, X_test, encoded_y_test))
+        processes.append(p)
         p.start()
+
+    for pr in processes:
+        pr.join()
+
+    groupped_results.sort_index(inplace=True)
+    file_name = 'results_independent_feature_selection.csv'
+    groupped_results.to_csv(file_name, sep='\t', encoding='utf-8', mode='a', header=True, index=True)
+
+    # warning: not sorted!
+    y_pred = groupped_results["outcome"].sort_index().astype(dtype='int32')
+    groupped_results.sort_index(inplace=True)
+    f1_acc_res = pd.DataFrame({
+        "accuracy": metrics.accuracy_score(y_cat, y_pred),
+        "F1" : metrics.f1_score(y_cat, y_pred, average="weighted")
+                               })
+    print("Accuracy:", metrics.accuracy_score(y_cat, y_pred) * 100, "%")
+    print("F1 score:", metrics.f1_score(y_cat, y_pred, average="weighted") * 100, "%")
+
+    file_name = 'results_independent_feature_selection_f1_acc.csv'
+    groupped_results.to_csv(file_name, sep='\t', encoding='utf-8', mode='a', header=True, index=True)

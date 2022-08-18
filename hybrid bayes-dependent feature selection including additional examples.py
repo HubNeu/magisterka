@@ -1,12 +1,10 @@
 #!/usr/bin/env python
 # coding: utf-8
-
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, LabelEncoder
-from sklearn.model_selection import train_test_split
-from sklearn.naive_bayes import CategoricalNB, MultinomialNB, GaussianNB
+from sklearn.naive_bayes import CategoricalNB
 from sklearn import metrics
 from sklearn.compose import make_column_transformer
-from sklearn.model_selection import KFold
+from sklearn.model_selection import StratifiedKFold
 import numpy as np
 
 np.set_printoptions(suppress=True)
@@ -15,8 +13,7 @@ import scipy
 import random
 import copy
 import warnings
-from multiprocessing import Process
-import queue
+from multiprocessing import Process, Manager
 
 warnings.filterwarnings("ignore")
 
@@ -334,20 +331,6 @@ y_cat = dataset.loc[:, "labels"]
 
 # print("Size of dataset costs: ", np.shape(dataset_costs))
 # print("Cost of classification on full dataset: ", dataset_costs.sum(axis=1)[0])
-
-max_seed_val = 2 ** 32 - 1
-
-# Split dataset into training set and test set
-X_train, X_test, y_train, y_test = train_test_split(
-    X_cat, y_cat, test_size=0.2, random_state=random.randrange(0, max_seed_val),
-)
-# print("Data has been split.")
-# print("X contains features: ", X_train.columns == "index")
-
-# Transform y using label encoder
-le = LabelEncoder().fit(y_cat)
-encoded_y_train = le.transform(y_train)
-encoded_y_test = le.transform(y_test)
 # print("Labels encoded: ", np.shape(encoded_y_train), ", ", np.shape(encoded_y_test))
 
 # Collectors of values
@@ -634,7 +617,7 @@ class SequentialForwardFeatureSelector:
             cols_ordinal,
             cols_one_hot,
             whole_dataset,
-            data_duplication_flag,
+            data_duplication_flag
     ):
         # Make copies as we'll be altering these datasets
         X_tr = copy.deepcopy(X_train_original)
@@ -646,8 +629,7 @@ class SequentialForwardFeatureSelector:
         final_result_columns = [
             "highest_proba",
             "outcome",
-            "cost_of_classification",
-            "feature_used_to_classify",
+            "cost_of_classification"
         ]
 
         final_result_dataframe = pd.DataFrame(columns=final_result_columns)
@@ -700,8 +682,8 @@ class SequentialForwardFeatureSelector:
             # Main loop, until all test classes are classified
             while unclassified_flag:
                 # make a list of features with their predicted accuracy
-                #print("")
-                #print("Start of loop number: ", loop_number)
+                # print("")
+                # print("Start of loop number: ", loop_number)
                 loop_number += 1
 
                 if latch_flag:
@@ -766,20 +748,13 @@ class SequentialForwardFeatureSelector:
                     classifier_per_featureset, X_train_dup, y_train_dup, X_test_subset
                 )
 
-                # 2.If proba > threshold, the we move/pop them from X_test to results along with the statistics
+                # 2.If proba > threshold, then we move/pop them from X_test to results along with the statistics
 
                 cost_of_classification = pd.DataFrame(
                     self.get_classification_costs(current_features),
                     columns=["cost_of_classification"],
                     index=[index],
                 )
-
-                feature_used_to_classify = pd.DataFrame(
-                    ",".join(map(str, current_features)),
-                    columns=["feature_used_to_classify"],
-                    index=[index],
-                )
-                # print(feature_used_to_classify)
 
                 # remove already classified classes
                 condition = highest_probas["highest_proba"] > (
@@ -791,7 +766,6 @@ class SequentialForwardFeatureSelector:
                         outcomes,
                         highest_probas,
                         cost_of_classification,
-                        feature_used_to_classify,
                     ],
                     axis=1,
                 )
@@ -889,7 +863,7 @@ class SequentialForwardFeatureSelector:
             X_tr = pd.concat([X_tra, X_train_add], axis=0)
             y_tr = np.concatenate((y_tra, y_train_add), axis=0)
         # print("Added: ", X_tr.shape[0] - size_beginning)
-        kf = KFold(n_splits=self.CV_folds)
+        kf = StratifiedKFold(n_splits=self.CV_folds)
         accuracy_per_new_feature = pd.DataFrame(
             0, index=np.arange(1), columns=unused_feat,
         )
@@ -900,7 +874,7 @@ class SequentialForwardFeatureSelector:
             feature_set_to_try.append(new_feature)
             dataset_for_encoder = pd.DataFrame(whole_dataset[feature_set_to_try])
 
-            for train_index, test_index in kf.split(X_tr):
+            for train_index, test_index in kf.split(X_tr, y_tr):
                 # create _train, _cv_test, _test splits
                 # no need to reshuffle it, it's already in random order
                 # X is a dataframe
@@ -953,19 +927,12 @@ class SequentialForwardFeatureSelector:
         )
 
     def get_classification_costs(self, list_of_categories):
-        return self.classification_costs[
-            self.classification_costs.columns.intersection(list_of_categories)
-        ].sum(axis=1)[0]
+        return len(list_of_categories)
 
 
-# print("Sequential Forward Feature Selector is created.")
-
-# Create a Bayes Classifier || requires min_categories due to a bug with indexes, reporting the bug added to TODO
-
-def doClassification(iteration_id):
-    selector = SequentialForwardFeatureSelector(dataset_costs, 10, 0.15)
-
-    y_test_pd = pd.DataFrame(encoded_y_test, columns=["index"], index=X_test.index).sort_index(inplace=False)
+def doClassification(iteration_id, number_of_folds, threshold, X_train, encoded_y_train, X_test,
+                     encoded_y_test):
+    selector = SequentialForwardFeatureSelector(dataset_costs, number_of_folds, threshold)
 
     # Train the model using the training sets
     results = selector.sequential_predict(
@@ -980,39 +947,84 @@ def doClassification(iteration_id):
         True,  # feature duplication when classifying
     )
 
-    """
-    # print("Done")
-    # print(results)
+    results.sort_index(inplace=True)
+    file_name = 'results_dependent_feature_selection_' + str(iteration_id) + '_.csv'
+    results.to_csv(file_name, sep='\t', encoding='utf-8', mode='w', header=True, index=False)
 
     # warning: not sorted!
-    y_pred = results["outcome"].sort_index()
-    y_test.sort_index(inplace=True)
-    print("Accuracy:", metrics.accuracy_score(y_test, y_pred) * 100, "%")
-    print("F1 score:", metrics.f1_score(y_test, y_pred, average="weighted") * 100, "%")
+    y_pred = results["outcome"].sort_index().astype(dtype='int32')
+    results.sort_index(inplace=True)
+    f1_acc_res = pd.DataFrame([(
+        metrics.accuracy_score(encoded_y_test, y_pred),
+        metrics.f1_score(encoded_y_test, y_pred, average="weighted"))],
+        columns=["accuracy", "F1"], index=[0])
+    print("Accuracy:", metrics.accuracy_score(encoded_y_test, y_pred) * 100, "%")
+    print("F1 score:", metrics.f1_score(encoded_y_test, y_pred, average="weighted") * 100, "%")
 
-    # Deduct some useful metrics:
-    # mean cost
-    # median cost
-    # difference in accuracy
-    """
-
-    # save to csv
-    file_name = 'results_dependent_feature_selection_' + str(iteration_id) + '.csv'
-    results.to_csv(file_name, sep='\t', encoding='utf-8', mode='a', header=True, index=False)
-
-    print("===============================================")
-    print("IterationId:", iteration_id)
-    y_pred = results["outcome"].sort_index()
-    print(y_test_pd.values)
-    print(y_pred.values)
-    #this doesnt work
-    print("Accuracy:", metrics.accuracy_score(y_test_pd, y_pred) * 100, "%")
-    print("F1 score:", metrics.f1_score(y_test_pd, y_pred, average="weighted") * 100, "%")
+    file_name = 'results_dependent_feature_selection_f1_acc_' + str(iteration_id) + '_.csv'
+    f1_acc_res.to_csv(file_name, sep='\t', encoding='utf-8', mode='w', header=True, index=False)
 
 
 if __name__ == '__main__':
-    #number_of_processes = 10
-    number_of_processes = 1
-    for proc in range(number_of_processes):
-        p = Process(target=doClassification, args=(proc,))
+    number_of_processes = 10
+    processes = []
+
+    max_seed_val = 2 ** 32 - 1
+    random_seed_kfold = random.randrange(0, max_seed_val)
+    number_of_folds = 10
+    threshold = 0.15
+
+    skf = StratifiedKFold(n_splits=number_of_folds, random_state=random_seed_kfold, shuffle=True)
+    proc = 0
+    # Split dataset into training set and test set
+    for train_idx, test_idx in skf.split(X_cat, y_cat):
+        X_train, X_test = (
+            X_cat.iloc[train_idx],
+            X_cat.iloc[test_idx],
+        )
+
+        # y
+        y_train, y_test = (
+            y_cat[train_idx],
+            y_cat[test_idx],
+        )
+        # print("Data has been split.")
+        # print("X contains features: ", X_train.columns == "index")
+
+        # Transform y using label encoder
+        le = LabelEncoder().fit(y_cat)
+        encoded_y_train = le.transform(y_train)
+        encoded_y_test = le.transform(y_test)
+
+        next_proc = copy.deepcopy(proc)
+        proc += 1
+        p = Process(target=doClassification,
+                    args=(next_proc, number_of_folds, threshold, X_train, encoded_y_train, X_test,
+                          encoded_y_test))
+        processes.append(p)
         p.start()
+
+    for pr in processes:
+        pr.join()
+
+    combined_results = pd.DataFrame(columns=[
+        "highest_proba",
+        "outcome",
+        "cost_of_classification"
+    ])
+    combined_results_acc = pd.DataFrame(columns=["accuracy", "F1"])
+
+    for i in range(number_of_processes):
+        combined_results = pd.concat(
+            [combined_results, pd.read_csv('results_dependent_feature_selection_' + str(i) + '_.csv')], axis=0)
+        combined_results_acc = pd.concat(
+            [combined_results_acc, pd.read_csv('results_dependent_feature_selection_f1_acc_' + str(i) + '_.csv')],
+            axis=0)
+
+    combined_results.sort_index(inplace=True)
+    combined_results_acc.sort_index(inplace=True)
+
+    combined_results.to_csv('results_dependent_feature_selection.csv', sep='\t', encoding='utf-8', mode='a',
+                                header=True, index=True)
+    combined_results_acc.to_csv('results_dependent_feature_selection_f1_acc.csv', sep='\t', encoding='utf-8', mode='a',
+                                header=True, index=True)
