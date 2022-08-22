@@ -13,7 +13,8 @@ import scipy
 import random
 import copy
 import warnings
-from multiprocessing import Process, Manager
+from multiprocessing import Process
+import os
 
 warnings.filterwarnings("ignore")
 
@@ -23,65 +24,31 @@ warnings.filterwarnings("ignore")
 
 cols_mushroom = [
     "labels",
-    "cap-shape",
-    "cap-surface",
-    "cap-color",
+    "cap_shape",
+    "cap_surface",
+    "cap_color",
     "bruises",
     "odor",
-    "gill-attachment",
-    "gill-spacing",
-    "gill-size",
-    "gill-color",
-    "stalk-shape",
-    "stalk-root",
-    "stalk-surface-above-ring",
-    "stalk-surface-below-ring",
-    "stalk-color-above-ring",
-    "stalk-color-below-ring",
-    "veil-type",
-    "veil-color",
-    "ring-number",
-    "ring-type",
-    "spore-print-color",
+    "gill_attachment",
+    "gill_spacing",
+    "gill_size",
+    "gill_color",
+    "stalk_shape",
+    "stalk_root",
+    "stalk_surface_above_ring",
+    "stalk_surface_below_ring",
+    "stalk_color_above_ring",
+    "stalk_color_below_ring",
+    "veil_type",
+    "veil_color",
+    "ring_number",
+    "ring_type",
+    "spore_print_color",
     "population",
     "habitat",
 ]
-mushroom_cost = pd.DataFrame({
-    "labels": 728,
-    "cap-shape": 704,
-    "cap-surface": 36,
-    "cap-color": 624,
-    "bruises": 717,
-    "odor": 300,
-    "gill-attachment": 38,
-    "gill-spacing": 522,
-    "gill-size": 4,
-    "gill-color": 992,
-    "stalk-shape": 999,
-    "stalk-root": 14,
-    "stalk-surface-above-ring": 838,
-    "stalk-surface-below-ring": 726,
-    "stalk-color-above-ring": 846,
-    "stalk-color-below-ring": 190,
-    "veil-type": 633,
-    "veil-color": 176,
-    "ring-number": 211,
-    "ring-type": 186,
-    "spore-print-color": 610,
-    "population": 379,
-    "habitat": 734
-},
-    columns=cols_mushroom,
-    index=[0]
-)
 
 cols_car = ["buying", "maintenance", "doors", "passengers", "boot", "safety", "labels"]
-car_cost = pd.DataFrame(
-    {"buying": 250, "maintenance": 923, "doors": 200, "passengers": 733, "boot": 299, "safety": 808, "labels": 474
-     },
-    columns=cols_car,
-    index=[0]
-)
 
 cols_audiology = [
     "age_gt_60",
@@ -153,86 +120,9 @@ cols_audiology = [
     "viith_nerve_signs",
     "wave_V_delayed",
     "waveform_ItoV_prolonged",
-    "p-index",
+    "p_index",
     "labels",
 ]
-
-audiology_cost = pd.DataFrame({
-    "age_gt_60": 119,
-    "air": 399,
-    "airBoneGap": 731,
-    "ar_c": 323,
-    "ar_u": 977,
-    "bone": 796,
-    "boneAbnormal": 107,
-    "bser": 852,
-    "history_buzzing": 326,
-    "history_dizziness": 847,
-    "history_fluctuating": 517,
-    "history_fullness": 654,
-    "history_heredity": 228,
-    "history_nausea": 367,
-    "history_noise": 973,
-    "history_recruitment": 175,
-    "history_ringing": 253,
-    "history_roaring": 294,
-    "history_vomiting": 851,
-    "late_wave_poor": 901,
-    "m_at_2k": 167,
-    "m_cond_lt_1k": 840,
-    "m_gt_1k": 97,
-    "m_m_gt_2k": 352,
-    "m_m_sn": 836,
-    "m_m_sn_gt_1k": 201,
-    "m_m_sn_gt_2k": 948,
-    "m_m_sn_gt_500": 418,
-    "m_p_sn_gt_2k": 137,
-    "m_s_gt_500": 804,
-    "m_s_sn": 173,
-    "m_s_sn_gt_1k": 980,
-    "m_s_sn_gt_2k": 871,
-    "m_s_sn_gt_3k": 393,
-    "m_s_sn_gt_4k": 446,
-    "m_sn_2_3k": 292,
-    "m_sn_gt_1k": 579,
-    "m_sn_gt_2k": 987,
-    "m_sn_gt_3k": 820,
-    "m_sn_gt_4k": 465,
-    "m_sn_gt_500": 951,
-    "m_sn_gt_6k": 736,
-    "m_sn_lt_1k": 180,
-    "m_sn_lt_2k": 529,
-    "m_sn_lt_3k": 543,
-    "middle_wave_poor": 896,
-    "mod_gt_4k": 755,
-    "mod_mixed": 811,
-    "vmod_s_mixed": 956,
-    "mod_s_sn_gt_500": 542,
-    "mod_sn": 835,
-    "mod_sn_gt_1k": 814,
-    "mod_sn_gt_2k": 207,
-    "mod_sn_gt_3k": 166,
-    "mod_sn_gt_4k": 732,
-    "mod_sn_gt_500": 204,
-    "notch_4k": 80,
-    "notch_at_4k": 698,
-    "o_ar_c": 823,
-    "o_ar_u": 147,
-    "s_sn_gt_1k": 577,
-    "s_sn_gt_2k": 493,
-    "s_sn_gt_4k": 993,
-    "speech": 585,
-    "static_normal": 654,
-    "tymp": 677,
-    "viith_nerve_signs": 657,
-    "wave_V_delayed": 585,
-    "waveform_ItoV_prolonged": 793,
-    "p-index": 659,
-    "labels": 200
-},
-    columns=cols_audiology,
-    index=[0]
-)
 
 """
 print("Cols audiology:",audiology_cost.isnull().values.any())
@@ -257,6 +147,8 @@ def load_car():
     # mappings using indexes:
     # X = df_car.loc[:, :5].values
     # y = df_car.loc[:, 6].values
+    # df_car = df_car.drop("buying", axis=1)
+    # df_car = df_car.drop("maintenance", axis=1)
     labels_col = df_car.pop("labels")
     df_car.insert(0, "labels", labels_col)
     return df_car
@@ -279,8 +171,8 @@ def load_mushroom():
     # X = df_mushroom.loc[:, 1:].values
     # y = df_mushroom.loc[:, 0].values
     # drop values corelating a bit too much like this
-    df_mushroom = df_mushroom.drop("odor", axis=1)
-    df_mushroom = df_mushroom.drop("spore_print_color", axis=1)
+    # df_mushroom = df_mushroom.drop("odor", axis=1)
+    # df_mushroom = df_mushroom.drop("spore_print_color", axis=1)
     return df_mushroom
 
 
@@ -303,6 +195,8 @@ def load_audiology():
     # X = df_audiology.loc[:, : length - 3].values
     # y = df_audiology.loc[:, length - 1].values
     df_audiology = df_audiology.drop("p_index", axis=1)
+    # cols to drop and try for modified datasets:
+    # df_audiology = df_audiology.drop("age_gt_60", axis=1)
     labels_col = df_audiology.pop("labels")
     df_audiology.insert(0, "labels", labels_col)
     return df_audiology
@@ -310,12 +204,15 @@ def load_audiology():
 
 # Choose dataset
 dataset = load_car()
-dataset_costs = car_cost
+dataset_name = "car"
+# dataset_costs = car_cost
 
 # dataset = load_mushroom()
+# dataset_name = "mushroom"
 # dataset_costs = mushroom_cost
 
 # dataset = load_audiology()
+# dataset_name = "audiology"
 # dataset_costs = audiology_cost
 
 # print(dataset.info())
@@ -534,6 +431,8 @@ class EncodingCategoricalBayes:
         encoded_X = self.column_transformer.transform(X)
         if scipy.sparse.issparse(encoded_X):
             encoded_X = encoded_X.toarray()
+        # print("cols:", X.columns)
+        # print("enc cols:", encoded_X.columns)
         return encoded_X
 
     def make_column_transformer(self, X):
@@ -602,8 +501,7 @@ class EncodingCategoricalBayes:
 
 # Sequential Forward Feature Selector
 class SequentialForwardFeatureSelector:
-    def __init__(self, classification_costs, CV_folds, uncertainty_threshold):
-        self.classification_costs = classification_costs
+    def __init__(self, CV_folds, uncertainty_threshold):
         self.CV_folds = CV_folds
         self.uncertainty_threshold = uncertainty_threshold
 
@@ -629,7 +527,8 @@ class SequentialForwardFeatureSelector:
         final_result_columns = [
             "highest_proba",
             "outcome",
-            "cost_of_classification"
+            "cost_of_classification",
+            "used_features"
         ]
 
         final_result_dataframe = pd.DataFrame(columns=final_result_columns)
@@ -646,23 +545,6 @@ class SequentialForwardFeatureSelector:
             # Statistics
             loop_number = 0
             classified_size += 1
-
-            """
-            print("")
-            print(
-                "Classified classes: ",
-                classified_size,
-                "/",
-                total_number_of_cases,
-                " | ",
-                "{:.2f}".format(classified_size / total_number_of_cases * 100),
-                "%",
-            )
-
-            print("")
-            print("=========================================")
-            print("New row entry number:", index)
-            """
 
             # starting feature
             accuracy_per_new_feature = self.find_next_best_feature(
@@ -730,9 +612,15 @@ class SequentialForwardFeatureSelector:
                 )
 
                 X_train_add = X_train_add_all_features[X_train_subset.columns.tolist()]
+                # print("Shape to add:", np.shape(X_train_add))
+                # print("Shape being added to:", np.shape(X_train_subset))
 
-                X_train_dup = pd.concat([X_train_subset, X_train_add], axis=0)
-                y_train_dup = np.concatenate((y_tr, y_train_add), axis=0)
+                times_to_duplicate = 1  # at least 1
+                for i in range(times_to_duplicate):
+                    X_train_dup = pd.concat([X_train_subset, X_train_add], axis=0)
+                    y_train_dup = np.concatenate((y_tr, y_train_add.squeeze()), axis=0).astype('int')
+
+                # print("Shape after adding:", np.shape(X_train_dup))
 
                 # make new classifier (due to different encoder data)
 
@@ -761,13 +649,18 @@ class SequentialForwardFeatureSelector:
                         1 - self.uncertainty_threshold
                 )
 
+                iter_features = pd.DataFrame(",".join(current_features),
+                                             columns=["used_features"],
+                                             index=[index])
+
                 batch_result_dataframe = pd.concat(
                     [
                         outcomes,
                         highest_probas,
                         cost_of_classification,
+                        iter_features
                     ],
-                    axis=1,
+                    axis=1
                 )
 
                 rows_classified = highest_probas.loc[condition].index
@@ -783,16 +676,16 @@ class SequentialForwardFeatureSelector:
         # print("All cases classified.")
         return final_result_dataframe
 
-    def predict_proba_wrapper(self, classifier, X_train, y_train, X_test):
+    def predict_proba_wrapper(self, classifier, X_train_arg, y_train_arg, X_test_arg):
         outcomes_fn = pd.DataFrame(columns=["outcome"])
         highest_probas_fn = pd.DataFrame(columns=["highest_proba"])
         to_duplicate_next = pd.DataFrame()
 
-        classifier.fit(X_train, y_train)
+        classifier.fit(X_train_arg, y_train_arg)
 
-        df_row_entry = X_test
+        df_row_entry = X_test_arg
 
-        # gotta make it in 2 steps bc of no column name tracking in numpy
+        # got to make it in 2 steps bc of no column name tracking in numpy
         new_outcome_df = pd.DataFrame(
             classifier.predict(df_row_entry).astype(int),
             columns=["outcome"],
@@ -815,7 +708,8 @@ class SequentialForwardFeatureSelector:
     ):
         if duplicates_per_case.empty or not flag:
             # nothing to dupe or flag is down (skip)
-            return X_train_arg, y_train_arg
+            # print("Nothing to duplicate")
+            return pd.DataFrame(columns=X_train_arg.columns.tolist()), pd.DataFrame(columns=["labels"]).squeeze()
 
         X_train = copy.deepcopy(X_train_arg)
         y_train = pd.DataFrame(
@@ -828,19 +722,16 @@ class SequentialForwardFeatureSelector:
         # for each feature
         duplicate_rows = pd.DataFrame(columns=X_train.columns.tolist())
         for col_name in duplicates_per_case.axes[1].tolist():
-            dupes = full_test_data.apply(
-                lambda row: row[
-                    full_test_data[col_name].isin([duplicates_per_case[col_name]])
-                ]
-            )
+            dupes = full_test_data.loc[full_test_data[col_name] == duplicates_per_case[col_name].iloc[0]]
             duplicate_rows = pd.concat(
                 [duplicate_rows, dupes], axis=0, ignore_index=True
             )
-
+        # print("Appended" + str(np.shape(duplicate_rows)[0]) + "examples.")
+        # print("Shape of X_train:" + str(np.shape(X_train_arg)))
         # return X_train, y_train
         return (
             duplicate_rows.loc[:, duplicate_rows.columns != "labels"],
-            duplicate_rows.loc[:, "labels"],
+            duplicate_rows.loc[:, "labels"].squeeze(),
         )
 
     def find_next_best_feature(
@@ -857,11 +748,12 @@ class SequentialForwardFeatureSelector:
             cols_one_hot,
     ):
         X_tr = copy.deepcopy(X_tra)
-        y_tr = copy.deepcopy(y_tra)
+        y_tr = copy.deepcopy(y_tra).astype(int)
         # size_beginning = np.shape(X_tr)[0]
+        # if X_train_add is not None and not X_train_add.empty:
         if X_train_add is not None and y_train_add is not None:
-            X_tr = pd.concat([X_tra, X_train_add], axis=0)
-            y_tr = np.concatenate((y_tra, y_train_add), axis=0)
+            X_tr = pd.concat([X_tr, X_train_add], axis=0)
+            y_tr = np.concatenate((y_tr, y_train_add), axis=0).astype(int)
         # print("Added: ", X_tr.shape[0] - size_beginning)
         kf = StratifiedKFold(n_splits=self.CV_folds)
         accuracy_per_new_feature = pd.DataFrame(
@@ -920,7 +812,7 @@ class SequentialForwardFeatureSelector:
     ):
         return EncodingCategoricalBayes(
             # classifier=CategoricalNB(),
-            ordinal_categories_order=order_of_ordinal_categories,
+            ordinal_categories_order=ordinal_categoires_order,
             ordinal_columns=cols_ordinal,
             one_hot_columns=cols_one_hot,
             dataset=whole_dataset,
@@ -930,9 +822,9 @@ class SequentialForwardFeatureSelector:
         return len(list_of_categories)
 
 
-def doClassification(iteration_id, number_of_folds, threshold, X_train, encoded_y_train, X_test,
-                     encoded_y_test):
-    selector = SequentialForwardFeatureSelector(dataset_costs, number_of_folds, threshold)
+def doClassification(iteration_id, number_of_folds, threshold, X_train, encoded_y_train, X_test, encoded_y_test,
+                     full_encoder_dataset, data_dupl_flag):
+    selector = SequentialForwardFeatureSelector(number_of_folds, threshold)
 
     # Train the model using the training sets
     results = selector.sequential_predict(
@@ -943,13 +835,13 @@ def doClassification(iteration_id, number_of_folds, threshold, X_train, encoded_
         order_of_ordinal_categories,  # order of ordinal categories
         cols_ordinal,  # list of ordinal columns in whole data
         cols_one_hot,  # list of one hot columns in whole data
-        X_cat,  # encoder dataset
-        True,  # feature duplication when classifying
+        full_encoder_dataset,  # encoder dataset
+        data_dupl_flag,  # feature duplication when classifying
     )
 
     results.sort_index(inplace=True)
     file_name = 'results_dependent_feature_selection_' + str(iteration_id) + '_.csv'
-    results.to_csv(file_name, sep='\t', encoding='utf-8', mode='w', header=True, index=False)
+    results.to_csv(file_name, sep='\t', encoding='utf-8', mode='w', header=True, index=True)
 
     # warning: not sorted!
     y_pred = results["outcome"].sort_index().astype(dtype='int32')
@@ -958,11 +850,9 @@ def doClassification(iteration_id, number_of_folds, threshold, X_train, encoded_
         metrics.accuracy_score(encoded_y_test, y_pred),
         metrics.f1_score(encoded_y_test, y_pred, average="weighted"))],
         columns=["accuracy", "F1"], index=[0])
-    print("Accuracy:", metrics.accuracy_score(encoded_y_test, y_pred) * 100, "%")
-    print("F1 score:", metrics.f1_score(encoded_y_test, y_pred, average="weighted") * 100, "%")
-
-    file_name = 'results_dependent_feature_selection_f1_acc_' + str(iteration_id) + '_.csv'
-    f1_acc_res.to_csv(file_name, sep='\t', encoding='utf-8', mode='w', header=True, index=False)
+    print("Accuracy of " + str(iteration_id) + " fold:", metrics.accuracy_score(encoded_y_test, y_pred) * 100, "%")
+    print("F1 score of " + str(iteration_id) + " fold:",
+          metrics.f1_score(encoded_y_test, y_pred, average="weighted") * 100, "%")
 
 
 if __name__ == '__main__':
@@ -971,10 +861,14 @@ if __name__ == '__main__':
 
     max_seed_val = 2 ** 32 - 1
     random_seed_kfold = random.randrange(0, max_seed_val)
-    number_of_folds = 10
-    threshold = 0.15
+    threshold = 0.10
+    # True -> sequential, duplicates data
+    # False -> only sequential
+    data_dupl_flag = False
+    le = LabelEncoder().fit(y_cat)
+    reference_outcomes = le.transform(y_cat)
 
-    skf = StratifiedKFold(n_splits=number_of_folds, random_state=random_seed_kfold, shuffle=True)
+    skf = StratifiedKFold(n_splits=number_of_processes, random_state=random_seed_kfold, shuffle=True)
     proc = 0
     # Split dataset into training set and test set
     for train_idx, test_idx in skf.split(X_cat, y_cat):
@@ -992,15 +886,14 @@ if __name__ == '__main__':
         # print("X contains features: ", X_train.columns == "index")
 
         # Transform y using label encoder
-        le = LabelEncoder().fit(y_cat)
         encoded_y_train = le.transform(y_train)
         encoded_y_test = le.transform(y_test)
 
         next_proc = copy.deepcopy(proc)
         proc += 1
         p = Process(target=doClassification,
-                    args=(next_proc, number_of_folds, threshold, X_train, encoded_y_train, X_test,
-                          encoded_y_test))
+                    args=(next_proc, number_of_processes, threshold, X_train, encoded_y_train, X_test,
+                          encoded_y_test, X_cat, data_dupl_flag))
         processes.append(p)
         p.start()
 
@@ -1008,23 +901,40 @@ if __name__ == '__main__':
         pr.join()
 
     combined_results = pd.DataFrame(columns=[
+        "index",
         "highest_proba",
         "outcome",
-        "cost_of_classification"
+        "cost_of_classification",
+        "used_features"
     ])
-    combined_results_acc = pd.DataFrame(columns=["accuracy", "F1"])
 
     for i in range(number_of_processes):
+        current_file_name = 'results_dependent_feature_selection_' + str(i) + '_.csv'
         combined_results = pd.concat(
-            [combined_results, pd.read_csv('results_dependent_feature_selection_' + str(i) + '_.csv')], axis=0)
-        combined_results_acc = pd.concat(
-            [combined_results_acc, pd.read_csv('results_dependent_feature_selection_f1_acc_' + str(i) + '_.csv')],
-            axis=0)
+            [combined_results, pd.read_csv(current_file_name,
+                                           names=["index", "highest_proba", "outcome", "cost_of_classification",
+                                                  "used_features"],
+                                           sep="\t", header=0)], axis=0)
+        os.remove(current_file_name)
 
-    combined_results.sort_index(inplace=True)
-    combined_results_acc.sort_index(inplace=True)
+    combined_results.sort_values(by=['index'], inplace=True)
+    # combined_results_acc.sort_values(by=['index'], inplace=True)
+    all_outcomes = combined_results["outcome"].astype(dtype='int32')
+    reference_outcomes = le.transform(y_cat)
 
-    combined_results.to_csv('results_dependent_feature_selection.csv', sep='\t', encoding='utf-8', mode='a',
-                                header=True, index=True)
-    combined_results_acc.to_csv('results_dependent_feature_selection_f1_acc.csv', sep='\t', encoding='utf-8', mode='a',
-                                header=True, index=True)
+    combined_results_acc = pd.DataFrame([(
+        metrics.accuracy_score(reference_outcomes, all_outcomes),
+        metrics.f1_score(reference_outcomes, all_outcomes, average="weighted"),
+        combined_results["cost_of_classification"].mean()
+    )],
+        columns=["accuracy", "F1", "average_cost_of_classification"], index=[0])
+    print("Total accuracy:", metrics.accuracy_score(reference_outcomes, all_outcomes) * 100, "%")
+    print("Total F1 score:", metrics.f1_score(reference_outcomes, all_outcomes, average="weighted") * 100, "%")
+
+    combined_results.to_csv('results_dependent_feature_selection' + dataset_name + '_' + str(data_dupl_flag) + '.csv',
+                            sep='\t', encoding='utf-8', mode='a',
+                            header=True, index=False)
+    combined_results_acc.to_csv(
+        'results_dependent_feature_selection_f1_acc' + dataset_name + '_' + str(data_dupl_flag) + '.csv', sep='\t',
+        encoding='utf-8', mode='a',
+        header=True, index=False)
