@@ -202,15 +202,23 @@ def load_audiology():
 
 # Choose dataset
 # dataset = load_car()
+# dataset_name = "car"
 # dataset_costs = car_cost
 
-dataset = load_mushroom()
+# dataset = load_mushroom()
+# dataset_name = "mushroom"
 # dataset_costs = mushroom_cost
 
-# dataset = load_audiology()
+dataset = load_audiology()
+dataset_name = "audiology"
 # dataset_costs = audiology_cost
-
+# print("dataset.info()")
 # print(dataset.info())
+print(">>dataset.describe()")
+print(dataset.describe())
+for c in dataset.columns.tolist():
+    print(">>dataset[", c ,"].value_counts()")
+    print(dataset[c].value_counts())
 # print("First five records:")
 # print(dataset.head())
 
@@ -568,9 +576,14 @@ print("Total accuracy:", metrics.accuracy_score(reference_outcomes, all_outcomes
 print("Total F1 score:", metrics.f1_score(reference_outcomes, all_outcomes, average="weighted") * 100, "%")
 combined_results_acc = pd.DataFrame([(
     metrics.accuracy_score(reference_outcomes, all_outcomes),
-    metrics.f1_score(reference_outcomes, all_outcomes, average="weighted"))],
-    columns=["accuracy", "F1"], index=[0])
-final_result_dataframe.to_csv('results_dependent_feature_selection.csv', sep='\t', encoding='utf-8', mode='a',
+    metrics.f1_score(reference_outcomes, all_outcomes, average="weighted"),
+    final_result_dataframe["cost_of_classification"].mean())
+],
+    columns=["accuracy", "F1", "average_cost_of_classification"], index=[0])
+final_result_dataframe.to_csv('results_base_' + dataset_name + '_.csv',
+                              sep='\t', encoding='utf-8', mode='a',
                               header=True, index=False)
-combined_results_acc.to_csv('results_dependent_feature_selection_f1_acc.csv', sep='\t', encoding='utf-8', mode='a',
-                            header=True, index=False)
+combined_results_acc.to_csv(
+    'results_base_f1_acc_' + dataset_name + '_.csv', sep='\t',
+    encoding='utf-8', mode='a',
+    header=True, index=False)

@@ -147,8 +147,8 @@ def load_car():
     # mappings using indexes:
     # X = df_car.loc[:, :5].values
     # y = df_car.loc[:, 6].values
-    # df_car = df_car.drop("buying", axis=1)
-    # df_car = df_car.drop("maintenance", axis=1)
+    df_car = df_car.drop("buying", axis=1)
+    df_car = df_car.drop("maintenance", axis=1)
     labels_col = df_car.pop("labels")
     df_car.insert(0, "labels", labels_col)
     return df_car
@@ -171,8 +171,8 @@ def load_mushroom():
     # X = df_mushroom.loc[:, 1:].values
     # y = df_mushroom.loc[:, 0].values
     # drop values corelating a bit too much like this
-    # df_mushroom = df_mushroom.drop("odor", axis=1)
-    # df_mushroom = df_mushroom.drop("spore_print_color", axis=1)
+    df_mushroom = df_mushroom.drop("odor", axis=1)
+    df_mushroom = df_mushroom.drop("spore_print_color", axis=1)
     return df_mushroom
 
 
@@ -196,19 +196,20 @@ def load_audiology():
     # y = df_audiology.loc[:, length - 1].values
     df_audiology = df_audiology.drop("p_index", axis=1)
     # cols to drop and try for modified datasets:
-    # df_audiology = df_audiology.drop("age_gt_60", axis=1)
+    df_audiology = df_audiology.drop("age_gt_60", axis=1)
+    df_audiology = df_audiology.drop("speech", axis=1)
     labels_col = df_audiology.pop("labels")
     df_audiology.insert(0, "labels", labels_col)
     return df_audiology
 
 
 # Choose dataset
-dataset = load_car()
-dataset_name = "car"
+# dataset = load_car()
+# dataset_name = "car"
 # dataset_costs = car_cost
 
-# dataset = load_mushroom()
-# dataset_name = "mushroom"
+dataset = load_mushroom()
+dataset_name = "mushroom"
 # dataset_costs = mushroom_cost
 
 # dataset = load_audiology()
@@ -400,13 +401,11 @@ order_of_ordinal_categories = pd.DataFrame.from_dict(
 class EncodingCategoricalBayes:
     def __init__(
             self,
-            # classifier,
             ordinal_categories_order,
             ordinal_columns,
             one_hot_columns,
             dataset,
     ):
-        # self.classifier = classifier
         self.ordinal_categories_order = ordinal_categories_order
         self.ordinal_columns = ordinal_columns
         self.one_hot_columns = one_hot_columns
@@ -417,28 +416,21 @@ class EncodingCategoricalBayes:
         self.column_transformer = self.make_column_transformer(self.transformer_dataset)
         self.column_transformer.fit(self.transformer_dataset[X.columns.tolist()])
         return self.classifier.fit(self.encode_features(X), y)
-        # return self.classifier.fit(X, y)
 
     def predict(self, X):
         return self.classifier.predict(self.encode_features(X))
-        # return self.classifier.predict(X)
 
     def predict_proba(self, X):
         return self.classifier.predict_proba(self.encode_features(X))
-        # return self.classifier.predict_proba(X)
 
     def encode_features(self, X):
         encoded_X = self.column_transformer.transform(X)
         if scipy.sparse.issparse(encoded_X):
             encoded_X = encoded_X.toarray()
-        # print("cols:", X.columns)
-        # print("enc cols:", encoded_X.columns)
         return encoded_X
 
     def make_column_transformer(self, X):
-        # Get current ordinal and one hot columns
         total_column_list = X.select_dtypes(include="object").columns
-        # print("Total col list: ", total_column_list)
         current_columns_one_hot = self.collect_current_one_hot_columns(
             total_column_list
         )
@@ -449,16 +441,7 @@ class EncodingCategoricalBayes:
         current_ordinal_col_ordering_to_encode = self.calculate_current_order_of_ordinal_columns_to_encode(
             current_columns_ordinal
         )
-        """
-        print(
-            "Columns in column transformer: ",
-            current_columns_one_hot,
-            " and ",
-            current_columns_ordinal,
-        )
-        """
 
-        # Create column transformer
         column_transformer = make_column_transformer(
             (OneHotEncoder(), current_columns_one_hot),
             (
@@ -469,11 +452,9 @@ class EncodingCategoricalBayes:
         return column_transformer
 
     def calculate_current_order_of_ordinal_columns_to_encode(self, argColumns):
-        # Get common cols to feed them in proper order to ordinal encoder
         index_of_common_cols = self.ordinal_categories_order.columns.intersection(
             argColumns
         )
-        # Convert to list
         order_of_ordinal_categories_list = (
             self.ordinal_categories_order[index_of_common_cols]
             .values.transpose()
@@ -482,24 +463,18 @@ class EncodingCategoricalBayes:
         return order_of_ordinal_categories_list
 
     def intersection(self, lst1, lst2):
-        # collects common elements in both lists
         return [value for value in lst1 if value in lst2]
 
     def collect_current_one_hot_columns(self, argCols):
         return self.intersection(self.one_hot_columns, argCols)
 
     def collect_current_ordinal_columns(self, argCols):
-        # make list of all values and create steps for them
         return self.intersection(self.ordinal_columns, argCols)
 
     def get_params(self, deep=True):
         return self.classifier.get_params()
 
 
-# print("Class EncodingCategoricalBayes has been created")
-
-
-# Sequential Forward Feature Selector
 class SequentialForwardFeatureSelector:
     def __init__(self, CV_folds, uncertainty_threshold):
         self.CV_folds = CV_folds
@@ -510,18 +485,15 @@ class SequentialForwardFeatureSelector:
             X_train_original,
             y_train_original,
             X_test_original,
-            y_test_original,
             ordinal_categoires_order,
             cols_ordinal,
             cols_one_hot,
             whole_dataset,
             data_duplication_flag
     ):
-        # Make copies as we'll be altering these datasets
         X_tr = copy.deepcopy(X_train_original)
         y_tr = copy.deepcopy(y_train_original)
         X_tst = copy.deepcopy(X_test_original)
-        y_tst = copy.deepcopy(y_test_original)
 
         # Variables
         final_result_columns = [
@@ -533,18 +505,11 @@ class SequentialForwardFeatureSelector:
 
         final_result_dataframe = pd.DataFrame(columns=final_result_columns)
 
-        total_number_of_cases = np.shape(X_tst)[0]
-        classified_size = -1
-
         for index, row_entry in X_tst.iterrows():
             unclassified_flag = True
             duplicates = pd.DataFrame()
             unused_features = X_tst.columns.tolist()
             current_features = []
-
-            # Statistics
-            loop_number = 0
-            classified_size += 1
 
             # starting feature
             accuracy_per_new_feature = self.find_next_best_feature(
@@ -563,11 +528,6 @@ class SequentialForwardFeatureSelector:
 
             # Main loop, until all test classes are classified
             while unclassified_flag:
-                # make a list of features with their predicted accuracy
-                # print("")
-                # print("Start of loop number: ", loop_number)
-                loop_number += 1
-
                 if latch_flag:
                     accuracy_per_new_feature = self.find_next_best_feature(
                         X_tr,
@@ -593,12 +553,10 @@ class SequentialForwardFeatureSelector:
                 unused_features.remove(best_next_feature)
                 current_features.append(best_next_feature)
 
-                # print("Picked feature: ", best_next_feature)
-                # print("Current feature set: ", current_features)
+                # 1.We have chosen the best feature. Duplicate data and we classify the X test using the feature and
+                # checking the probabilities
 
-                # 1.We have chosen the best feature, duplicate data and we classify the test using the feature and checking the probablilities
-
-                # create X_train subset with apropriate features
+                # create X_train subset with appropriate features
                 X_train_subset = pd.DataFrame(X_tr[current_features])
                 X_test_subset = pd.DataFrame(row_entry.loc[current_features]).T
 
@@ -612,17 +570,11 @@ class SequentialForwardFeatureSelector:
                 )
 
                 X_train_add = X_train_add_all_features[X_train_subset.columns.tolist()]
-                # print("Shape to add:", np.shape(X_train_add))
-                # print("Shape being added to:", np.shape(X_train_subset))
 
                 times_to_duplicate = 1  # at least 1
                 for i in range(times_to_duplicate):
                     X_train_dup = pd.concat([X_train_subset, X_train_add], axis=0)
                     y_train_dup = np.concatenate((y_tr, y_train_add.squeeze()), axis=0).astype('int')
-
-                # print("Shape after adding:", np.shape(X_train_dup))
-
-                # make new classifier (due to different encoder data)
 
                 classifier_per_featureset = self.make_encoding_categorical_bayes(
                     ordinal_categoires_order,
@@ -632,7 +584,7 @@ class SequentialForwardFeatureSelector:
                 )
 
                 # define duplicates before end of refactorization and moving forward
-                outcomes, highest_probas, duplicates = self.predict_proba_wrapper(
+                outcomes, highest_probas = self.predict_proba_wrapper(
                     classifier_per_featureset, X_train_dup, y_train_dup, X_test_subset
                 )
 
@@ -679,7 +631,6 @@ class SequentialForwardFeatureSelector:
     def predict_proba_wrapper(self, classifier, X_train_arg, y_train_arg, X_test_arg):
         outcomes_fn = pd.DataFrame(columns=["outcome"])
         highest_probas_fn = pd.DataFrame(columns=["highest_proba"])
-        to_duplicate_next = pd.DataFrame()
 
         classifier.fit(X_train_arg, y_train_arg)
 
@@ -701,7 +652,7 @@ class SequentialForwardFeatureSelector:
             index=df_row_entry.index,
         )
         highest_probas_fn = pd.concat([highest_probas_fn, new_probas_df])
-        return outcomes_fn, highest_probas_fn, to_duplicate_next
+        return outcomes_fn, highest_probas_fn
 
     def prepare_train_dataset(
             self, X_train_arg, y_train_arg, duplicates_per_case, flag
@@ -749,16 +700,16 @@ class SequentialForwardFeatureSelector:
     ):
         X_tr = copy.deepcopy(X_tra)
         y_tr = copy.deepcopy(y_tra).astype(int)
-        # size_beginning = np.shape(X_tr)[0]
-        # if X_train_add is not None and not X_train_add.empty:
+
         if X_train_add is not None and y_train_add is not None:
             X_tr = pd.concat([X_tr, X_train_add], axis=0)
             y_tr = np.concatenate((y_tr, y_train_add), axis=0).astype(int)
-        # print("Added: ", X_tr.shape[0] - size_beginning)
+
         kf = StratifiedKFold(n_splits=self.CV_folds)
         accuracy_per_new_feature = pd.DataFrame(
             0, index=np.arange(1), columns=unused_feat,
         )
+
         for new_feature in unused_feat:
             # print("Calculating feature: ", new_feature)
             sum_of_accuracies = 0
@@ -767,22 +718,15 @@ class SequentialForwardFeatureSelector:
             dataset_for_encoder = pd.DataFrame(whole_dataset[feature_set_to_try])
 
             for train_index, test_index in kf.split(X_tr, y_tr):
-                # create _train, _cv_test, _test splits
-                # no need to reshuffle it, it's already in random order
-                # X is a dataframe
                 X_train, X_cv = (
                     X_tr.iloc[train_index],
                     X_tr.iloc[test_index],
                 )
-
                 # y
                 y_train, y_cv = (
                     y_tr[train_index],
                     y_tr[test_index],
                 )
-
-                # print("train: ", train_index, "test: ", test_index)
-
                 # add feture to test to X
                 X_train_subset = pd.DataFrame(X_train[feature_set_to_try])
                 X_cv_subset = pd.DataFrame(X_cv[feature_set_to_try])
@@ -831,7 +775,7 @@ def doClassification(iteration_id, number_of_folds, threshold, X_train, encoded_
         X_train,
         encoded_y_train,
         X_test,
-        encoded_y_test,
+        # encoded_y_test,
         order_of_ordinal_categories,  # order of ordinal categories
         cols_ordinal,  # list of ordinal columns in whole data
         cols_one_hot,  # list of one hot columns in whole data
@@ -864,7 +808,7 @@ if __name__ == '__main__':
     threshold = 0.10
     # True -> sequential, duplicates data
     # False -> only sequential
-    data_dupl_flag = False
+    data_dupl_flag = True
     le = LabelEncoder().fit(y_cat)
     reference_outcomes = le.transform(y_cat)
 
@@ -931,10 +875,10 @@ if __name__ == '__main__':
     print("Total accuracy:", metrics.accuracy_score(reference_outcomes, all_outcomes) * 100, "%")
     print("Total F1 score:", metrics.f1_score(reference_outcomes, all_outcomes, average="weighted") * 100, "%")
 
-    combined_results.to_csv('results_dependent_feature_selection' + dataset_name + '_' + str(data_dupl_flag) + '.csv',
+    combined_results.to_csv('results_dependent_feature_selection_' + dataset_name + '_' + str(data_dupl_flag) + '.csv',
                             sep='\t', encoding='utf-8', mode='a',
                             header=True, index=False)
     combined_results_acc.to_csv(
-        'results_dependent_feature_selection_f1_acc' + dataset_name + '_' + str(data_dupl_flag) + '.csv', sep='\t',
+        'results_dependent_feature_selection_f1_acc_' + dataset_name + '_' + str(data_dupl_flag) + '.csv', sep='\t',
         encoding='utf-8', mode='a',
         header=True, index=False)
