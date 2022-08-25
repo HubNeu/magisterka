@@ -208,12 +208,12 @@ def load_audiology():
 # dataset_name = "car"
 # dataset_costs = car_cost
 
-dataset = load_mushroom()
-dataset_name = "mushroom"
+# dataset = load_mushroom()
+# dataset_name = "mushroom"
 # dataset_costs = mushroom_cost
 
-# dataset = load_audiology()
-# dataset_name = "audiology"
+dataset = load_audiology()
+dataset_name = "audiology"
 # dataset_costs = audiology_cost
 
 # print(dataset.info())

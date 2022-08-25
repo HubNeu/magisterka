@@ -147,6 +147,8 @@ def load_car():
     # mappings using indexes:
     # X = df_car.loc[:, :5].values
     # y = df_car.loc[:, 6].values
+    df_car = df_car.drop("buying", axis=1)
+    df_car = df_car.drop("maintenance", axis=1)
     labels_col = df_car.pop("labels")
     df_car.insert(0, "labels", labels_col)
     return df_car
@@ -169,8 +171,8 @@ def load_mushroom():
     # X = df_mushroom.loc[:, 1:].values
     # y = df_mushroom.loc[:, 0].values
     # drop values corelating a bit too much like this
-    # df_mushroom = df_mushroom.drop("odor", axis=1)
-    # df_mushroom = df_mushroom.drop("spore_print_color", axis=1)
+    df_mushroom = df_mushroom.drop("odor", axis=1)
+    df_mushroom = df_mushroom.drop("spore_print_color", axis=1)
     return df_mushroom
 
 
@@ -194,7 +196,8 @@ def load_audiology():
     # y = df_audiology.loc[:, length - 1].values
     df_audiology = df_audiology.drop("p_index", axis=1)
     # cols to drop and try for modified datasets:
-    # df_audiology = df_audiology.drop("age_gt_60", axis=1)
+    df_audiology = df_audiology.drop("age_gt_60", axis=1)
+    df_audiology = df_audiology.drop("speech", axis=1)
     labels_col = df_audiology.pop("labels")
     df_audiology.insert(0, "labels", labels_col)
     return df_audiology
@@ -214,11 +217,11 @@ dataset_name = "audiology"
 # dataset_costs = audiology_cost
 # print("dataset.info()")
 # print(dataset.info())
-print(">>dataset.describe()")
-print(dataset.describe())
-for c in dataset.columns.tolist():
-    print(">>dataset[", c ,"].value_counts()")
-    print(dataset[c].value_counts())
+# print(">>dataset.describe()")
+# print(dataset.describe())
+# for c in dataset.columns.tolist():
+    # print(">>dataset[", c, "].value_counts()")
+    # print(dataset[c].value_counts())
 # print("First five records:")
 # print(dataset.head())
 
