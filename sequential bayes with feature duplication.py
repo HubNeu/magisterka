@@ -875,10 +875,10 @@ if __name__ == '__main__':
     print("Total accuracy:", metrics.accuracy_score(reference_outcomes, all_outcomes) * 100, "%")
     print("Total F1 score:", metrics.f1_score(reference_outcomes, all_outcomes, average="weighted") * 100, "%")
 
-    combined_results.to_csv('results_dependent_feature_selection_' + dataset_name + '_' + str(data_dupl_flag) + '.csv',
+    combined_results.to_csv('sequential bayes with feature duplication_' + dataset_name + '_' + str(data_dupl_flag) + '.csv',
                             sep='\t', encoding='utf-8', mode='a',
                             header=True, index=False)
     combined_results_acc.to_csv(
-        'results_dependent_feature_selection_f1_acc_' + dataset_name + '_' + str(data_dupl_flag) + '.csv', sep='\t',
+        'sequential bayes with feature duplication_f1_acc_' + dataset_name + '_' + str(data_dupl_flag) + '.csv', sep='\t',
         encoding='utf-8', mode='a',
         header=True, index=False)
