@@ -18,10 +18,6 @@ import os
 
 warnings.filterwarnings("ignore")
 
-# print("Libs imported. Python version is: ", python_version())
-
-# utility functions
-
 cols_mushroom = [
     "labels",
     "cap_shape",
@@ -125,13 +121,6 @@ cols_audiology = [
 ]
 
 """
-print("Cols audiology:",audiology_cost.isnull().values.any())
-print("Cols car", car_cost.isnull().values.any())
-print("cols_mushroom:", mushroom_cost.isnull().values.any())
-print("")
-"""
-
-"""
 https://archive.ics.uci.edu/ml/datasets/car+evaluation
 0-5 -> data
 6 -> labels
@@ -170,7 +159,7 @@ def load_mushroom():
     # index mappings
     # X = df_mushroom.loc[:, 1:].values
     # y = df_mushroom.loc[:, 0].values
-    # drop values corelating a bit too much like this
+    # dropping values:
     df_mushroom = df_mushroom.drop("odor", axis=1)
     df_mushroom = df_mushroom.drop("spore_print_color", axis=1)
     return df_mushroom
@@ -195,7 +184,7 @@ def load_audiology():
     # X = df_audiology.loc[:, : length - 3].values
     # y = df_audiology.loc[:, length - 1].values
     df_audiology = df_audiology.drop("p_index", axis=1)
-    # cols to drop and try for modified datasets:
+    # dropping columns:
     df_audiology = df_audiology.drop("age_gt_60", axis=1)
     df_audiology = df_audiology.drop("speech", axis=1)
     labels_col = df_audiology.pop("labels")
@@ -206,32 +195,16 @@ def load_audiology():
 # Choose dataset
 # dataset = load_car()
 # dataset_name = "car"
-# dataset_costs = car_cost
 
-# dataset = load_mushroom()
-# dataset_name = "mushroom"
-# dataset_costs = mushroom_cost
+dataset = load_mushroom()
+dataset_name = "mushroom"
 
-dataset = load_audiology()
-dataset_name = "audiology"
-# dataset_costs = audiology_cost
-
-# print(dataset.info())
-# print("First five records:")
-# print(dataset.head())
+# dataset = load_audiology()
+# dataset_name = "audiology"
 
 # Extract to X and y
 X_cat = dataset.loc[:, dataset.columns != "labels"]
 y_cat = dataset.loc[:, "labels"]
-
-# print("Size of X: ", np.shape(X_cat))
-# print("Size of y: ", np.shape(y_cat))
-
-# print("Size of dataset costs: ", np.shape(dataset_costs))
-# print("Cost of classification on full dataset: ", dataset_costs.sum(axis=1)[0])
-# print("Labels encoded: ", np.shape(encoded_y_train), ", ", np.shape(encoded_y_test))
-
-# Collectors of values
 
 cols_one_hot = [
     "cap_shape",
@@ -336,8 +309,6 @@ cols_ordinal = [
     "tymp",
 ]
 
-# print("Cols created.")
-
 # Make order of categories per each column in ordinal_columns
 order_of_ordinal_categories = pd.DataFrame.from_dict(
     {
@@ -391,11 +362,6 @@ order_of_ordinal_categories = pd.DataFrame.from_dict(
         "tymp": ["a", "as", "b", "ad", "c", "filler1", "filler2"],
     }
 )
-
-
-# print("Order created.")
-# print(order_of_ordinal_categories)
-
 
 # Create custom encoding categorical bayes classifier
 class EncodingCategoricalBayes:
@@ -624,8 +590,6 @@ class SequentialForwardFeatureSelector:
                     )
 
                 # now go back to the beginning of the loop and check for unclassified classes
-            # print("Out of the loop. Usable features ran out, or no more cases to classify.")
-        # print("All cases classified.")
         return final_result_dataframe
 
     def predict_proba_wrapper(self, classifier, X_train_arg, y_train_arg, X_test_arg):
@@ -659,7 +623,6 @@ class SequentialForwardFeatureSelector:
     ):
         if duplicates_per_case.empty or not flag:
             # nothing to dupe or flag is down (skip)
-            # print("Nothing to duplicate")
             return pd.DataFrame(columns=X_train_arg.columns.tolist()), pd.DataFrame(columns=["labels"]).squeeze()
 
         X_train = copy.deepcopy(X_train_arg)
@@ -677,8 +640,6 @@ class SequentialForwardFeatureSelector:
             duplicate_rows = pd.concat(
                 [duplicate_rows, dupes], axis=0, ignore_index=True
             )
-        # print("Appended" + str(np.shape(duplicate_rows)[0]) + "examples.")
-        # print("Shape of X_train:" + str(np.shape(X_train_arg)))
         # return X_train, y_train
         return (
             duplicate_rows.loc[:, duplicate_rows.columns != "labels"],
@@ -711,7 +672,6 @@ class SequentialForwardFeatureSelector:
         )
 
         for new_feature in unused_feat:
-            # print("Calculating feature: ", new_feature)
             sum_of_accuracies = 0
             feature_set_to_try = copy.deepcopy(current_feat)
             feature_set_to_try.append(new_feature)
@@ -800,19 +760,20 @@ def doClassification(iteration_id, number_of_folds, threshold, X_train, encoded_
 
 
 if __name__ == '__main__':
-    number_of_processes = 10
+    number_of_processes_for_parallelization = 10
+    number_of_cv_folds = 10
     processes = []
 
     max_seed_val = 2 ** 32 - 1
     random_seed_kfold = random.randrange(0, max_seed_val)
-    threshold = 0.10
+    threshold = 0.05
     # True -> sequential, duplicates data
     # False -> only sequential
-    data_dupl_flag = True
+    data_dupl_flag = False
     le = LabelEncoder().fit(y_cat)
     reference_outcomes = le.transform(y_cat)
 
-    skf = StratifiedKFold(n_splits=number_of_processes, random_state=random_seed_kfold, shuffle=True)
+    skf = StratifiedKFold(n_splits=number_of_processes_for_parallelization, random_state=random_seed_kfold, shuffle=True)
     proc = 0
     # Split dataset into training set and test set
     for train_idx, test_idx in skf.split(X_cat, y_cat):
@@ -826,8 +787,6 @@ if __name__ == '__main__':
             y_cat[train_idx],
             y_cat[test_idx],
         )
-        # print("Data has been split.")
-        # print("X contains features: ", X_train.columns == "index")
 
         # Transform y using label encoder
         encoded_y_train = le.transform(y_train)
@@ -836,7 +795,7 @@ if __name__ == '__main__':
         next_proc = copy.deepcopy(proc)
         proc += 1
         p = Process(target=doClassification,
-                    args=(next_proc, number_of_processes, threshold, X_train, encoded_y_train, X_test,
+                    args=(next_proc, number_of_cv_folds, threshold, X_train, encoded_y_train, X_test,
                           encoded_y_test, X_cat, data_dupl_flag))
         processes.append(p)
         p.start()
@@ -852,7 +811,7 @@ if __name__ == '__main__':
         "used_features"
     ])
 
-    for i in range(number_of_processes):
+    for i in range(number_of_processes_for_parallelization):
         current_file_name = 'results_dependent_feature_selection_' + str(i) + '_.csv'
         combined_results = pd.concat(
             [combined_results, pd.read_csv(current_file_name,
